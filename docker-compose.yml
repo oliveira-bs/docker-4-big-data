@@ -1,0 +1,139 @@
+version: '1'
+
+x-airflow-common: &airflow-common
+  build:
+    context: ./containers/airflow
+    dockerfile: Dockerfile
+  env_file:
+    - ./containers/airflow/.env
+  volumes:
+    - ./containers/airflow/dags:/opt/airflow/dags
+    - ./containers/airflow/logs:/opt/airflow/logs
+    - ./data:/opt/airflow/data
+    - ./src:/opt/airflow/src
+  depends_on:
+    postgres-airflow:
+      condition: service_healthy
+  networks:
+    - big-data-network
+
+x-postgres-common: &postgres-common
+  image: postgres:17.2
+  healthcheck:
+    test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}"]
+    interval: 3s
+    timeout: 2s
+    retries: 5
+  networks:
+    - big-data-network
+
+x-spark-common: &spark-common
+  image: bitnami/spark:3.5.4
+  volumes:
+    - ./containers/airflow/dags:/opt/bitnami/spark/dags
+    - ./data:/opt/airflow/data
+    - ./src:/opt/bitnami/spark/src
+  networks:
+    - big-data-network
+
+
+services:
+  airflow-scheduler:
+    container_name: airflow-scheduler
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && \
+                      airflow users create \                                                
+                      --firstname Bruno \
+                      --lastname Oliveira \
+                      --role Admin \
+                      --email oliveira.email.pro@gmail.com \
+                      --username airflow \
+                      --password airflow && \
+                      airflow connections add spark_default \
+                      --conn-type 'spark' \
+                      --conn-host 'spark://spark:7077' \
+                      --conn-extra '$SPARK_EXTRA' && \
+                      airflow connections add aws_default \
+                      --conn-type 'aws' \
+                      --conn-login 'fake-key' \
+                      --conn-password 'fake-secret' \
+                      --conn-extra '${AWS_EXTRA}' && \    
+                      airflow scheduler"
+    depends_on:
+      - airflow-webserver
+
+  airflow-webserver:
+    container_name: airflow
+    <<: *airflow-common
+    env_file:
+      - ./containers/airflow/.env
+    command: bash -c "airflow db migrate && \
+                      airflow webserver"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+
+  localstack:
+    image: localstack/localstack:4.0.3
+    container_name: localstack
+    env_file:
+      - ./containers/localstack/.env
+    ports:
+      - "4566:4566" # Porta principal para a API Gateway e serviços
+      - "4571:4571" # Porta para o DynamoDB (se necessário)
+    volumes:
+      - ./containers/localstack/data:/var/lib/localstack # Persistência de dados
+      - /var/run/docker.sock:/var/run/docker.sock # Necessário para Lambda
+    networks:
+      - big-data-network
+
+  localstack-s3-ui:
+    container_name: localstack-s3-ui
+    image: opensourcetothepoint/localstack-ui:1.0.0
+    environment:
+      - PORT=8003
+    ports:
+      - 8003:8003
+    depends_on:
+      - localstack
+    networks:
+      - big-data-network
+
+  postgres-airflow:
+    container_name: postgres-airflow
+    <<: *postgres-common
+    env_file:
+      - ./containers/postgres-airflow/.env
+    ports:
+      - "5440:5432"
+
+  postgres-analytics:
+    container_name: postgres-analytics
+    <<: *postgres-common
+    env_file:
+      - ./containers/postgres/.env
+    ports:
+      - "5441:5432"
+
+  spark-master:
+    container_name: spark-master
+    <<: *spark-common
+    command: bash -c "bin/spark-class org.apache.spark.deploy.master.Master"
+    ports:
+      - "9090:8080"
+      - "7077:7077"
+
+  spark-worker:
+    container_name: spark-worker
+    <<: *spark-common
+    env_file:
+      - ./containers/spark/config/spark-worker.env
+    command: bash -c "bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077"
+    depends_on:
+      - spark-master
+
+networks:
+  big-data-network:
+    driver: bridge
