@@ -1,10 +1,9 @@
 .pytest_cache
-./containers/airflow/logs
-./containers/airflow/logs/scheduler
-./containers/localstack/data/cache
-./containers/localstack/data/lib
-./containers/localstack/data/logs
-./containers/localstack/data/tmp
+./containers/airflow/logs/*
+./containers/localstack/data/cache/*
+./containers/localstack/data/lib/*
+./containers/localstack/data/logs/*
+./containers/localstack/data/tmp/*
 ./gitignore
 ./src/app.py
 ./src/make_bucket.py
