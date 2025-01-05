@@ -93,6 +93,7 @@ docker-4-big-data/
 5. **`.env`**: Found in various repository folders, these files store essential environment variables for Docker Compose execution. They contain critical information such as database access credentials, service configurations, and connection parameters. Docker Compose uses these variables to properly configure containers and enable service communication during pipeline execution.
 
 >[!IMPORTANT]
+>
 >**AWS Variables**: The `.env` file related to LocalStack contains environment variables simulating AWS access credentials. These variables are used to create a local environment that mimics AWS, allowing testing of cloud service interactions, such as S3, without accessing a real AWS account. These credentials are fictitious and serve to enable service simulation on the LocalStack platform.
 
 ## LocalStack Dashboard Visualization
