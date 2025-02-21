@@ -40,6 +40,22 @@ Os comandos para executar ou desmontar os contêineres estão definidos no `Make
 
 Esses comandos automatizam o processo e facilitam a implementação e execução do projeto.
 
+## Testando a Comunicação entre Contêineres
+
+Nesta seção, vamos verificar a comunicação do contêiner Airflow com os contêineres **Spark** e **LocalStack**. Para isso, executaremos os scripts localizados em `src/`, que acionam o contêiner **Spark** para processar dados e gerar um novo arquivo em `data/output/processed/`, além de criar um novo bucket no **S3 do LocalStack**.
+
+- Testando o processamento de dados com o Spark:
+```
+docker exec -it airflow /bin/bash -c "spark-submit --master spark://spark-master:7077 --packages org.apache.hadoop:hadoop-aws:3.3.1 /opt/airflow/src/app.py"
+```
+
+- Testando a comunicação com o LocalStack e criando um novo bucket:
+```
+docker exec -it airflow /bin/bash -c "python3 /opt/airflow/src/make_bucket.py"
+```
+
+Após a execução, um novo arquivo deverá estar disponível em `data/output/processed/`, e o novo bucket poderá ser visualizado no painel do **LocalStack**.
+
 ## Estrutura do Projeto
 O projeto segue a seguinte estrutura de diretórios:
 

@@ -28,7 +28,9 @@ x-postgres-common: &postgres-common
     - big-data-network
 
 x-spark-common: &spark-common
-  image: bitnami/spark:3.5.4
+  build:
+    context: ./containers/spark
+    dockerfile: Dockerfile
   volumes:
     - ./containers/airflow/dags:/opt/bitnami/spark/dags
     - ./data:/opt/airflow/data
@@ -81,11 +83,15 @@ services:
     env_file:
       - ./containers/localstack/.env
     ports:
-      - "4566:4566" # Porta principal para a API Gateway e serviços
-      - "4571:4571" # Porta para o DynamoDB (se necessário)
+      - "4566:4566"
+      - "4571:4571"
+    command: /bin/bash -c "chmod -R 777 /var/lib/localstack/data &&\
+                          mkdir -p ./containers/localstack/data/s3/buckets &&\
+                          mkdir -p /var/lib/localstack/data/s3/buckets &&\
+                          localstack start"
     volumes:
-      - ./containers/localstack/data:/var/lib/localstack # Persistência de dados
-      - /var/run/docker.sock:/var/run/docker.sock # Necessário para Lambda
+      - ./containers/localstack/data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - big-data-network
 
@@ -120,6 +126,8 @@ services:
   spark-master:
     container_name: spark-master
     <<: *spark-common
+    env_file:
+      - ./containers/spark/.env    
     command: bash -c "bin/spark-class org.apache.spark.deploy.master.Master"
     ports:
       - "9090:8080"
@@ -133,6 +141,10 @@ services:
     command: bash -c "bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077"
     depends_on:
       - spark-master
+
+volumes:
+  localstack-data:
+    
 
 networks:
   big-data-network:

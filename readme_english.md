@@ -40,6 +40,24 @@ Commands for managing the containers are defined in the `Makefile`, making Docke
 
 These commands automate processes and simplify project implementation and execution.
 
+## Testing Communication Between Containers
+
+In this section, we will verify the communication between the Airflow container and the **Spark** and **LocalStack** containers. To do this, we will run the scripts located in `src/`, which trigger the **Spark** container to process data and generate a new file in `data/output/processed/`, as well as create a new bucket in **LocalStack S3**.
+
+- Testing data processing with Spark:
+
+```
+docker exec -it airflow /bin/bash -c "spark-submit --master spark://spark-master:7077 --packages org.apache.hadoop:hadoop-aws:3.3.1 /opt/airflow/src/app.py"
+```
+
+- Testing communication with LocalStack and creating a new bucket:
+
+```
+docker exec -it airflow /bin/bash -c "python3 /opt/airflow/src/make_bucket.py"
+```
+
+After execution, a new file should be available in `data/output/processed/`, and the new bucket should be visible in the **LocalStack** dashboard.
+
 ## Project Structure
 The project follows the directory structure below:
 
